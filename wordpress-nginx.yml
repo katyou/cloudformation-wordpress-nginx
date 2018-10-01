@@ -143,8 +143,8 @@ Metadata:
         default: Remote Security Group
       RdsSecurityGroup:
         default: RDS Security Group
-      EfsSecurityGroup:
-        default: EFS Security Group
+      # EfsSecurityGroup:
+      #   default: EFS Security Group
 
       # Instance Settings
       KeyPairName:
@@ -158,11 +158,11 @@ Metadata:
       HostedZoneId:
         default: Hosted Zone ID
 
-      # EFS
-      EfsMountPoint:
-        default: EFS Mount Point
-      EfsFileSystemId:
-        default: EFS File System Id
+      # # EFS
+      # EfsMountPoint:
+      #   default: EFS Mount Point
+      # EfsFileSystemId:
+      #   default: EFS File System Id
 
       # Database
       DbHost:
@@ -453,14 +453,14 @@ Resources:
                             try_files $uri $uri/ @handler;
                         }
                         location @handler {
-                            fastcgi_pass 127.0.0.1:9000;
+                            fastcgi_pass unix:/var/run/php-fpm/www.sock;
                             fastcgi_param SCRIPT_FILENAME /var/www/html/wordpress/index.php;
                             include /etc/nginx/fastcgi_params;
                             fastcgi_param SCRIPT_NAME /index.php;
                         }
                         location ~ .php$ {
                             try_files $uri @handler;
-                            fastcgi_pass    127.0.0.1:9000;
+                            fastcgi_pass    unix:/var/run/php-fpm/www.sock;
                             fastcgi_index   index.php;
                             fastcgi_param SCRIPT_FILENAME /var/www/html/wordpress$fastcgi_script_name;
                             include fastcgi_params;
@@ -529,9 +529,15 @@ Resources:
           commands:
             01_replace_apache_with_nginx_user:
               command: "sed -i 's/apache/nginx/g' /etc/php-fpm-7.1.d/www.conf"
-            02_set_ownership_logs_dir:
+            02_replace_acl_users:
+              command: "sed -i 's/listen.acl_users = nginx,nginx/;listen.acl_users = nginx,nginx/g' /etc/php-fpm-7.1.d/www.conf"
+            03_replace_owner: 
+              command: "sed -i 's/;listen.owner = nobody/listen.owner = nginx/g' /etc/php-fpm-7.1.d/www.conf"
+            04_replace_group:  
+              command: "sed -i 's/;listen.group = nobody/listen.group = nginx/g' /etc/php-fpm-7.1.d/www.conf"
+            05_set_ownership_logs_dir:
               command: "chown -R nginx:nginx /var/log/php-fpm"
-            03_set_ownership_session_dir:
+            06_set_ownership_session_dir:
               command: "chown -R root:nginx /var/lib/php/7.1/"
         start_services:
           commands:
