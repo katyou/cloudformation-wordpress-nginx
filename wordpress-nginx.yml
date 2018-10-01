@@ -398,7 +398,7 @@ Resources:
         install_packages:
           commands:
             01_install_nginx:
-              command: "yum install -y htop vim mlocate git nginx mysql56 php70-fpm php70-mysqlnd php70-gd php70-mbstring php70-mcrypt"
+              command: "yum install -y htop vim git nginx mysql57 mysql57-server mysql57-errmsg php71-fpm php71-mysqlnd php71-gd php71-mbstring php71-mcrypt"
             02_download_wordpress:
               cwd: /tmp/
               command: "wget https://wordpress.org/latest.tar.gz"
@@ -421,6 +421,21 @@ Resources:
                 echo "${EfsFileSystemId}.efs.${AWS::Region}.amazonaws.com:/ ${EfsMountPoint} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 0 0" >> /etc/fstab
             03_mount_efs:
               command: "mount -a -t nfs4"
+        setup_mysql:
+          files:
+            "/var/www/html/database-script":
+              content: !Sub |
+                CREATE  DATABASE wordpress;
+                CREATE USER 'wordpresss'@'%' IDENTIFIED BY 'password';
+                GRANT ALL PRIVILEGES ON *.* TO 'wordpress'@'%';
+                FLUSH PRIVILEGES;
+          commands:
+            local_mysqld-server-start:
+              command: "sudo service mysqld start"
+            database-restart:
+              cwd: /var/www/html
+              command:  cat database-script | mysql -u root -p
+
         config_wordpress:
           files:
             "/etc/nginx/conf.d/wordpress.conf":
@@ -430,8 +445,8 @@ Resources:
                         server_name ${RecordName};
                         root   /var/www/html/wordpress;
                         index index.php index.html index.htm;
-                        #access_log /var/log/nginx/wordpress_access.log;
-                        #error_log /var/log/nginx/wordpress_error.log;
+                        access_log /var/log/nginx/wordpress_access.log;
+                        error_log /var/log/nginx/wordpress_error.log;
                         location / {
                             if ($http_x_forwarded_proto != 'https') {
                                     rewrite ^ https://$host$request_uri? permanent;
@@ -514,21 +529,21 @@ Resources:
         config_php_fpm:
           commands:
             01_replace_apache_with_nginx_user:
-              command: "sed -i 's/apache/nginx/g' /etc/php-fpm-7.0.d/www.conf"
+              command: "sed -i 's/apache/nginx/g' /etc/php-fpm-7.1.d/www.conf"
             02_set_ownership_logs_dir:
               command: "chown -R nginx:nginx /var/log/php-fpm"
             03_set_ownership_session_dir:
-              command: "chown -R root:nginx /var/lib/php/7.0/"
+              command: "chown -R root:nginx /var/lib/php/7.1/"
         start_services:
           commands:
             01_start_php_fpm:
-              command: "service php-fpm-7.0 restart"
+              command: "service php-fpm-7.1 restart"
             02_start_nginx:
               command: "service nginx restart"
             03_onboot_php_fpm:
               command: "chkconfig nginx on"
             04_onboot_nginx:
-              command: "chkconfig php-fpm-7.0 on"
+              command: "chkconfig php-fpm-7.1 on"
         dns_update_script:
           files:
             "/usr/sbin/update-dns":
