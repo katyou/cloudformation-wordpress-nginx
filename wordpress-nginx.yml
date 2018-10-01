@@ -363,8 +363,9 @@ Resources:
           ec2_setup:
             - config_cfn
             - install_packages
-            - setup_uploads_efs
+            # - setup_uploads_efs
             - config_wordpress
+            - config_mysql_script
             - config_php_fpm
             - start_services
             - dns_update_script
@@ -410,32 +411,30 @@ Resources:
             05_chmod_wordpress:
               cwd: /var/www/html/
               command: "chown -R nginx:nginx /var/www/html/wordpress"
-        setup_uploads_efs:
-          commands:
-            01_make_mount_dir:
-              cwd: /var/www/html
-              command: !Sub "mkdir -p ${EfsMountPoint}"
-            02_update_fstab:
-              cwd: /var/www/html
-              command: !Sub |
-                echo "${EfsFileSystemId}.efs.${AWS::Region}.amazonaws.com:/ ${EfsMountPoint} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 0 0" >> /etc/fstab
-            03_mount_efs:
-              command: "mount -a -t nfs4"
-        setup_mysql:
+            06_local_mysqld_server_start:
+              command: "sudo service mysqld start"
+        # setup_uploads_efs:
+        #   commands:
+        #     01_make_mount_dir:
+        #       cwd: /var/www/html
+        #       command: !Sub "mkdir -p ${EfsMountPoint}"
+        #     02_update_fstab:
+        #       cwd: /var/www/html
+        #       command: !Sub |
+        #         echo "${EfsFileSystemId}.efs.${AWS::Region}.amazonaws.com:/ ${EfsMountPoint} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 0 0" >> /etc/fstab
+        #     03_mount_efs:
+        #       command: "mount -a -t nfs4"
+        config_mysql_script:
           files:
-            "/var/www/html/database-script":
+            "/var/www/html/database-script.sh":
               content: !Sub |
                 CREATE  DATABASE wordpress;
-                CREATE USER 'wordpresss'@'%' IDENTIFIED BY 'password';
+                CREATE USER 'wordpress'@'%' IDENTIFIED BY 'password';
                 GRANT ALL PRIVILEGES ON *.* TO 'wordpress'@'%';
                 FLUSH PRIVILEGES;
           commands:
-            local_mysqld-server-start:
-              command: "sudo service mysqld start"
             database-restart:
-              cwd: /var/www/html
-              command:  cat database-script | mysql -u root -p
-
+              command:  "cat /var/www/html/database-script.sh | mysql -u root"
         config_wordpress:
           files:
             "/etc/nginx/conf.d/wordpress.conf":
