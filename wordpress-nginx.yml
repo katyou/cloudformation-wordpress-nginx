@@ -428,9 +428,9 @@ Resources:
           files:
             "/var/www/html/database-script.sh":
               content: !Sub |
-                CREATE  DATABASE wordpress;
-                CREATE USER 'wordpress'@'%' IDENTIFIED BY 'password';
-                GRANT ALL PRIVILEGES ON *.* TO 'wordpress'@'%';
+                CREATE  DATABASE ${DbName};
+                CREATE USER '${DbUser}'@'%' IDENTIFIED BY '${DbPassword}';
+                GRANT ALL PRIVILEGES ON *.* TO '${DbUser}'@'%';
                 FLUSH PRIVILEGES;
           commands:
             database-restart:
